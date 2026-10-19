@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>航班營運儀表板</title>
+<style>
+:root{--bg:#f3f6f7;--card:#fff;--ink:#13242e;--mut:#5d707b;--line:#dbe3e7;--y26:#0b7a86;--y25:#d98a06;--y24:#8d9faa;--up:#0b7a40;--dn:#b4332a;--acc:#0b7a86;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1b22;--card:#17272f;--ink:#e6eef1;--mut:#9bb0ba;--line:#2a3d47;--y26:#3cc4d2;--y25:#f0b33f;--y24:#7f93a0;--up:#5fd08c;--dn:#ff8a7f;--acc:#3cc4d2;--on:#0b1a20}}
+:root[data-theme="dark"]{--bg:#0f1b22;--card:#17272f;--ink:#e6eef1;--mut:#9bb0ba;--line:#2a3d47;--y26:#3cc4d2;--y25:#f0b33f;--y24:#7f93a0;--up:#5fd08c;--dn:#ff8a7f;--acc:#3cc4d2;--on:#0b1a20}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif}
+.w{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-bottom:16px}
+h1{font-size:24px;margin:0;font-weight:700}
+h2{font-size:15px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin-top:2px}
+button{font:inherit;color:var(--ink);cursor:pointer}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;padding:6px 14px;line-height:1.3}.seg small{display:block;font-size:11px;opacity:.85}
+.seg button[aria-pressed=true],.chips button[aria-pressed=true]{background:var(--acc);color:var(--on)}
+select,.imp{font:inherit;cursor:pointer;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.kpi .l{color:var(--mut);font-size:13px}
+.kpi .v{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;margin:2px 0}
+.kpi .s{font-size:12px;color:var(--mut)}
+.up{color:var(--up)}.dn{color:var(--dn)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.chips button{border:1px solid var(--line);background:none;border-radius:999px;padding:3px 12px;font-size:13px}
+.box{position:relative;height:300px}
+.grid{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;white-space:nowrap}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:500}
+.note{color:var(--mut);font-size:12px;line-height:1.7}
+.lg{display:flex;gap:14px;font-size:12px;color:var(--mut)}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+</style></head><body><div class="w">
+<header><div><h1>航班營運儀表板</h1><div class="sub" id="sub"></div></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="imp" id="imp" title="選擇新的 Excel 檔案，直接更新畫面上的數據">匯入 Excel</button><input type="file" id="fi" accept=".xlsx" hidden><select id="yr" aria-label="年份"></select><select id="mo" aria-label="月份"></select><div class="seg" id="seg" role="group" aria-label="航向"></div></div></header>
+<section class="kpis" id="kpis"></section>
+<section class="card" style="margin-bottom:14px">
+<h2 id="t1"></h2><div class="chips" id="chips"></div>
+
+<div class="box" id="c1"></div></section>
+<section class="card" style="margin-bottom:14px"><h2 id="t2"></h2><div class="chips" id="chips2"></div><div class="lg" id="lg2"></div><div class="box" id="c2"></div></section>
+<section class="card" style="margin-bottom:14px"><h2 id="t3"></h2><div class="tw"><table id="tb"></table></div></section>
+</div>
+<script>
+let D=/*DATA*/{"OB":{"FLT":{"2024":[788,774,826,830,890,854,936,983,969,991,894,977],"2025":[1027,939,1036,1030,1076,1051,1084,1103,1034,1103,1044,1114],"2026":[1155,1088,1190,1213,1250,1233,1281,1332,1323,null,null,null]},"OTP":{"2024":[0.85,0.835,0.841,0.789,0.829,0.778,0.834,0.8475,0.895,0.891,0.913,0.911],"2025":[0.898,0.94,0.946,0.912,0.913,0.943,0.901,0.885,0.952,0.858,0.935,0.914],"2026":[0.905,0.91,0.932,0.907,0.942,0.899,0.918,0.885,0.927,null,null,null]},"OTP2":{"2024":[0.982,0.987,0.984,0.982,0.993,0.991,0.994,0.994,0.997,0.997,0.993,0.992],"2025":[0.985,0.995,0.998,0.994,0.991,0.998,0.993,0.984,0.997,0.986,0.991,0.981],"2026":[0.979,0.983,0.989,0.981,0.985,0.984,0.995,0.998,0.998,null,null,null]},"CFG":{"2024":[175420,172407,184833,188891,202941,194493,216112,226910,227446,233816,211164,228779],"2025":[244422,224600,248130,249912,240938,256039,264177,269829,253752,263146,251347,268956],"2026":[278181,264970,287926,299880,311879,304549,322759,337064,334911,null,null,null]},"PAX":{"2024":[150416,143496,156903,151024,154695,171928,186605,194619,168432,179051,171671,191389],"2025":[214771,182708,197645,194120,180958,202801,217418,218595,181150,204320,202211,222773],"2026":[242598,228216,250444,248372,250241,260767,281657,283056,258592,null,null,null]},"NS":{"2024":[1155,2430,1625,1223,1093,1714,1908,1978,923,1157,1225,1004],"2025":[1632,1073,1094,1351,2155,1914,2821,2816,1555,1723,1660,1469],"2026":[2268,1501,2017,1487,1619,2000,1664,1494,1334,null,null,null]},"TRAN":{"2024":[578,566,945,928,884,732,817,1620,1277,1552,1935,1895],"2025":[2508,2310,4640,4391,4684,4329,4970,4819,3259,4096,4739,4179],"2026":[5320,4780,7717,6974,7041,6713,6857,7351,5083,null,null,null]},"BGPC":{"2024":[148736,141786,156334,147871,153427,163963,175564,182653,164110,177969,173849,200681],"2025":[231484,195079,207987,199145,188099,209463,221990,221588,186280,212356,216112,244529],"2026":[267718,246917,274060,262420,267321,271818,278787,281935,265398,null,null,null]},"BGKG":{"2024":[2114466,1997019,2136987,1993801,2046253,2189940,2423727,2504572,2179088,2408482,2407943,2887848],"2025":[3471335,2878158,3018935,2858146,2693346,2989109,3250090,3185464,2544008,3000008,3131709,3655378],"2026":[4064369,3728167,4109952,3767027,3820573,3862025,4012853,4036608,3701488,null,null,null]},"EB":{"2024":[1433066,1457474,1580895,1579080,1593901,1576054,1587744,1438241,2096442,2341388,2259899,2839691],"2025":[2649610,2152426,2421911,2172775,1959651,2122351,1814776,2046747,2198645,2152057,2474374,3077721],"2026":[3049964,2160323,3057451,2345846,2467239,2753548,2912302,null,null,null,null,null]},"APT":{"2024":[39307241,40950859,43322332,42911965,45669461,45310581,49938972,51879614,51682443,53523530,50045111,53237683],"2025":[58044565,53444219,56816471,56681821,59699133,58362143,61544943,62769557,59459636,61229462,58801487,62643329],"2026":[69586346,67108067,71516024,73275435,75505903,74718687,80322491,84175030,84752917,null,null,null]},"GHSP":{"2024":[null,null,null,3028098,2838780,2834640,2771788,2976712,2764618,3072649,4267572,4641982],"2025":[4304017,4176172,4647408,6125143,6125944,5861078,6175068,6956478,6508020,6873992,6676312,7020970],"2026":[7478580,7056318,8159184,10802044,12161372,10033052,11284644,12016824,11819538,null,null,null]}},"IB":{"FLT":{"2024":[788,772,826,831,890,853,937,984,970,995,894,977],"2025":[1025,941,1038,1028,1077,1050,1084,1103,1034,1102,1043,1114],"2026":[1154,1088,1191,1213,1250,1233,1281,1332,1320,null,null,null]},"OTP":{"2024":[0.8299,0.7655,0.847,0.714,0.795,0.768,0.756,0.748,0.792,0.788,0.851,0.841],"2025":[0.801,0.869,0.906,0.843,0.855,0.899,0.772,0.765,0.88,0.814,0.878,0.783],"2026":[0.851,0.81,0.799,0.815,0.879,0.723,0.752,0.679,0.786,null,null,null]},"OTP2":{"2024":[1,1,0.989,1,0.994,0.992,0.992,0.996,0.997,0.99,0.997,0.999],"2025":[0.994,0.991,0.994,0.994,0.997,0.999,0.996,1,0.996,0.997,0.994,0.997],"2026":[0.99,0.993,0.996,0.994,0.997,0.996,0.998,0.995,0.997,null,null,null]},"CFG":{"2024":[175420,171795,184715,189079,202941,194305,216300,227098,227752,235013,211164,229155],"2025":[243928,224976,248664,249794,261806,255733,263871,271232,253752,263122,251068,268956],"2026":[277687,265088,288258,299880,311879,304737,322868,337073,334067,null,null,null]},"PAX":{"2024":[134556,151239,157560,154716,156305,165971,187261,200489,175501,184403,174258,197106],"2025":[194529,196713,204650,203434,196713,205181,213933,231445,184474,217180,208335,233291],"2026":[226343,238831,262253,252936,271186,260389,281387,296083,266137,null,null,null]},"NS":{"2024":[838,2791,1834,1386,1367,1191,1688,2059,1195,2067,1149,1338],"2025":[967,1575,1479,2046,1861,1504,2794,3396,1730,1938,2169,1428],"2026":[1367,1649,2557,1678,2051,1569,1842,1408,1257,null,null,null]},"TRAN":{"2024":[13116,8836,13508,13672,14175,13998,18583,19792,15258,15411,16172,20601],"2025":[26573,20970,27112,27558,26392,28802,33587,30285,18762,24347,27353,35873],"2026":[42071,28255,45309,37147,39231,36221,37238,38217,30151,null,null,null]},"BGPC":{"2024":[142427,160659,165261,160043,162506,170489,189362,200709,182655,194136,185180,213725],"2025":[219992,219915,223301,217474,210881,221410,231675,246448,200546,238559,232079,263149],"2026":[263941,279104,298898,284165,290272,255801,295266,312056,284821,null,null,null]},"BGKG":{"2024":[2293309,2535933,2609939,2498179,2547744,2669585,2980282,3131482,2857782,3036829,2934815,3426485],"2025":[3563378,3551528,3587179,3430509,3371575,3549148,3730884,3968181,3199233,3825263,3771917,4301193],"2026":[4396703,4513107,4889326,4577326,4704350,4681214,4770919,5070461,4671223,null,null,null]},"EB":{"2024":[4676895,3542689,3834755,4289779,4770784,4163329,4509065,5126506,6791031,6269064,5911608,7099856],"2025":[8221600,7462106,8585389,7230833,7544394,6833514,7345989,9325342,8510195,9060556,9451974,11113054],"2026":[12609250,9340023,12755867,10078712,11056452,10441205,9882767,null,null,null,null,null]},"APT":{"2024":[62043734,57273892,65001231,60088935,45877438,68311658,73399726,82127275,79724739,84323557,78429294,92496007],"2025":[99319530,91034679,101341346,106190909,112543847,95446009,106876389,110273608,103407912,107809368,104182055,136402929],"2026":[117060174,114805620,122066510,122133502,121522892,94908487,131971791,149129415,132640864,null,null,null]},"GHSP":{"2024":[73085121,66948350,78646347,87993480,87212056,81927607,91793938,106457175,106862001,111224966,95252058,109213147],"2025":[118553259,111640212,126611281,133243749,142572126,113926287,126702266,128088401,130598171,134730209,129375010,137097634],"2026":[149218650,135028648,154521121,154245191,155398368,154601892,160383900,176698453,171302501,null,null,null]}}}/*END*/,Y=[2024,2025,2026],MN=Array.from({length:12},(_,i)=>(i+1)+'月');
+const M=[
+{id:'FLT',t:'航班數',k:'s',n:'FLT',f:'i'},{id:'PAX',t:'旅客數',k:'s',n:'PAX',f:'i'},{id:'CFG',t:'座位數',k:'s',n:'CFG',f:'i'},
+{id:'LF',t:'載客率',k:'r',n:'PAX',d:'CFG',f:'p'},{id:'OTP',t:'準點率 Overall',k:'o',f:'p'},{id:'OTP2',t:'準點率（扣除 P/G/K/C）',k:'o',o:'OTP2',f:'p'},{id:'NSR',t:'未登機率 N/S',k:'r',n:'NS',d:'PAX',f:'q',bad:1},
+{id:'TRR',t:'轉機旅客比例',k:'r',n:'TRAN',d:'PAX',f:'p'},{id:'BGP',t:'每人行李件數',k:'r',n:'BGPC',d:'PAX',f:'d'},{id:'KGP',t:'每人行李公斤',k:'r',n:'BGKG',d:'PAX',f:'e'},{id:'BGT',t:'總行李件數',k:'s',n:'BGPC',f:'i'},{id:'BGW',t:'總行李重量 (公斤)',k:'s',n:'BGKG',f:'i'},
+{id:'APT',t:'APT FEE (TWD)',k:'s',n:'APT',f:'m'},{id:'GHSP',t:'GHSP FEE (TWD)',k:'s',n:'GHSP',f:'m'}];
+const G={ALL:'全部',OB:'去程 O/B',IB:'回程 I/B'},SB={ALL:'去程＋回程',OB:'台灣出發 TPE·RMQ·KHH',IB:'回台灣 TPE·RMQ·KHH'},K=['FLT','CFG','PAX','LF','OTP','OTP2','NSR','TRR','BGT','BGW','KGP','APT','GHSP'];
+const gm=id=>M.find(m=>m.id==id),$=id=>document.getElementById(id);
+const add=(a,b)=>a.map((v,i)=>v==null&&b[i]==null?null:(v||0)+(b[i]||0));
+function one(g,m,y){const x=new Proxy(D[g],{get:(t,k)=>new Proxy(t[k],{get:(a,yy)=>a[yy]||Array(12).fill(null)})});
+if(m.k=='s'){const n=x[m.n][y];return{n,d:n.map(v=>v==null?null:1)}}
+if(m.k=='r'){const n=x[m.n][y],d=x[m.d][y];return{n:n.map((v,i)=>d[i]==null?null:v),d}}
+const f=x.FLT[y],o=x[m.o||'OTP'][y];return{n:o.map((v,i)=>v==null?null:v*f[i]),d:o.map((v,i)=>v==null?null:f[i])}}
+function nd(g,m,y){if(g!='ALL')return one(g,m,y);const a=one('OB',m,y),b=one('IB',m,y);
+return{n:add(a.n,b.n),d:m.k=='s'?a.n.map((v,i)=>v==null&&b.n[i]==null?null:1):add(a.d,b.d)}}
+const val=(o,i)=>o.n[i]==null||!o.d[i]?null:o.n[i]/o.d[i];
+const ser=(g,m,y)=>{const o=nd(g,m,y);return o.n.map((_,i)=>val(o,i))};
+function ytd(g,m,y,e){const o=nd(g,m,y);let n=0,d=0;for(let i=0;i<=e;i++)if(o.n[i]!=null){n+=o.n[i];d+=o.d[i]}return d?(m.k=='s'?n:n/d):null}
+const fm=(f,v)=>v==null?'–':f=='i'?Math.round(v).toLocaleString('en-US'):f=='p'?(v*100).toFixed(1)+'%':f=='q'?(v*100).toFixed(2)+'%':f=='d'?v.toFixed(2):f=='e'?v.toFixed(1):(v/1e6).toFixed(1)+'M';
+function dl(m,c,p){if(c==null||p==null)return{t:'–',c:''};const pc='pq'.includes(m.f),x=pc?(c-p)*100:(c/p-1)*100;
+return{t:(x>=0?'▲ ':'▼ ')+Math.abs(x).toFixed(1)+(pc?' pp':'%'),c:(x>=0)!=!!m.bad?'up':'dn'}}
+
+let g='ALL',mid='PAX',mid2='PAX',c1,c2,S,Yr,E,src='';const LI=y=>y==Y[Y.length-1]?E:11;const yc=y=>[cv('--y24'),cv('--y25'),cv('--y26')][Math.max(0,Math.min(2,2-(Y[Y.length-1]-y)))];
+const cv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function kpis(){$('kpis').innerHTML=K.map(id=>{const m=gm(id),a=ser(g,m,Yr)[S],b=ser(g,m,Yr-1)[S],d=dl(m,a,b),ya=ytd(g,m,Yr,S),yb=ytd(g,m,Yr-1,S),yd=dl(m,ya,yb);
+return`<div class="card kpi"><div class="l">${m.t}</div><div class="v">${fm(m.f,a)}</div><div class="s"><span class="${d.c}">${d.t}</span> 較去年同月</div><div class="s">1–${S+1}月累計 ${fm(m.f,ya)} <span class="${yd.c}">${yd.t}</span></div></div>`}).join('')}
+const tk=(lo,hi,n=5)=>{const s=(hi-lo)/n||1,p=Math.pow(10,Math.floor(Math.log10(s))),f=s/p,st=(f<=1?1:f<=2?2:f<=5?5:10)*p,r=[];for(let v=Math.floor(lo/st)*st;v<=Math.ceil(hi/st)*st+st/2;v+=st)r.push(+v.toPrecision(12));return r};
+const bx=id=>{const e=$(id);return[e,Math.max(e.clientWidth,320),e.clientHeight||300]};
+const T_=(x,y,s,a,c,w)=>`<text x="${x}" y="${y}" text-anchor="${a}" fill="${c}" font-size="12"${w?' font-weight="700"':''}>${s}</text>`;
+function c1draw(){const m=gm(mid),v=ser(g,m,Yr),[e,W,H]=bx('c1'),l=72,r=16,t=26,b=26,pw=W-l-r,ph=H-t-b,tx=cv('--mut'),ln=cv('--line'),co=yc(Yr),a=v.filter(x=>x!=null);
+$('t1').textContent=m.t+'：'+Yr+' 年逐月走勢（'+G[g]+'）';
+if(!a.length){e.innerHTML='<p class="note">此年度尚無資料</p>';return}
+const mn=Math.min(...a),mx=Math.max(...a),pd=(mx-mn)*.2||Math.abs(mx)*.05||1,T=tk(mn-pd,mx+pd),lo=T[0],hi=T[T.length-1],py=x=>t+ph*(1-(x-lo)/(hi-lo)),px=i=>l+pw*(i+.5)/12;
+let s=T.map(x=>`<line x1="${l}" x2="${W-r}" y1="${py(x)}" y2="${py(x)}" stroke="${ln}"/>`+T_(l-8,py(x)+4,fm(m.f,x),'end',tx)).join('')+MN.map((n,i)=>T_(px(i),H-8,n,'middle',tx)).join('');
+let d='',pen=0;v.forEach((x,i)=>{if(x==null){pen=0;return}d+=(pen?'L':'M')+px(i)+' '+py(x);pen=1});
+s+=`<path d="${d}" fill="none" stroke="${co}" stroke-width="3"/>`;
+v.forEach((x,i)=>{if(x!=null)s+=`<circle cx="${px(i)}" cy="${py(x)}" r="${i==S?7:3.5}" fill="${co}"/>`});
+if(v[S]!=null)s+=T_(px(S),py(v[S])-13,fm(m.f,v[S]),'middle',cv('--ink'),1);
+s+=v.map((x,i)=>`<rect x="${l+pw*i/12}" y="${t}" width="${pw/12}" height="${ph}" fill="transparent"><title>${MN[i]}：${fm(m.f,x)}</title></rect>`).join('');
+e.innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="${m.t}">${s}</svg>`}
+function c2draw(){const m=gm(mid2),[e,W,H]=bx('c2'),l=72,r=16,t=14,b=26,pw=W-l-r,ph=H-t-b,tx=cv('--mut'),ln=cv('--line'),col=Y.map(yc),P=Y.map(y=>ser(g,m,y)),a=P.flat().filter(x=>x!=null);
+$('t2').textContent=m.t+'：各月份年度比較（'+G[g]+'）';
+if(!a.length){e.innerHTML='<p class="note">尚無資料</p>';return}
+const mn=Math.min(...a),mx=Math.max(...a),tr=m.id=='LF'||m.id=='OTP'||m.id=='OTP2',T=tk(tr?mn-(mx-mn)*.6:0,mx),lo=T[0],hi=T[T.length-1],py=x=>t+ph*(1-(x-lo)/(hi-lo)),gw=pw/12,bw=gw*.8/Y.length;
+let s=T.map(x=>`<line x1="${l}" x2="${W-r}" y1="${py(x)}" y2="${py(x)}" stroke="${ln}"/>`+T_(l-8,py(x)+4,fm(m.f,x),'end',tx)).join('');
+for(let i=0;i<12;i++){s+=T_(l+gw*(i+.5),H-8,MN[i],'middle',tx);
+Y.forEach((y,j)=>{const v=P[j][i];if(v!=null)s+=`<rect x="${l+gw*i+gw*.1+j*bw}" y="${py(v)}" width="${bw*.9}" height="${t+ph-py(v)}" fill="${col[j]}"/>`});
+s+=`<rect x="${l+gw*i}" y="${t}" width="${gw}" height="${ph}" fill="transparent"><title>${MN[i]}`+Y.map((y,j)=>`\n${y}：${fm(m.f,P[j][i])}`).join('')+`</title></rect>`}
+e.innerHTML=`<svg width="${W}" height="${H}" role="img" aria-label="${m.t}各月份年度比較">${s}</svg>`}
+addEventListener('resize',()=>{c1draw();c2draw()});
+function table(){$('t3').textContent=Yr+' 年逐月明細（'+G[g]+'）';const C=['FLT','CFG','PAX','LF','OTP','OTP2','NSR','TRR','BGT','BGW','KGP','APT','GHSP'].map(gm);
+let h='<tr><th>月份</th>'+C.map(m=>'<th>'+m.t+'</th>').join('')+'<th>旅客數 YoY</th></tr>';
+for(let i=0;i<=LI(Yr);i++){const pa=ser(g,gm('PAX'),Yr)[i],pb=ser(g,gm('PAX'),Yr-1)[i],d=dl(gm('PAX'),pa,pb);
+h+='<tr'+(i==S?' style="background:var(--bg);font-weight:700"':'')+'><td>'+MN[i]+'</td>'+C.map(m=>'<td>'+fm(m.f,ser(g,m,Yr)[i])+'</td>').join('')+'<td class="'+d.c+'">'+d.t+'</td></tr>'}
+$('tb').innerHTML=h}
+function ui(){$('lg2').innerHTML=Y.map(y=>`<span><i style="background:${yc(y)}"></i>${y}</span>`).join('');$('chips2').innerHTML=M.map(m=>`<button aria-pressed="${m.id==mid2}" data-m2="${m.id}">${m.t}</button>`).join('');$('yr').innerHTML=Y.map(y=>`<option value="${y}"${y==Yr?' selected':''}>${y} 年</option>`).join('');$('mo').innerHTML=Array.from({length:LI(Yr)+1},(_,i)=>`<option value="${i}"${i==S?' selected':''}>${Yr} 年 ${i+1} 月</option>`).join('');$('seg').innerHTML=Object.keys(G).map(k=>`<button aria-pressed="${k==g}" data-g="${k}">${G[k]}<small>${SB[k]}</small></button>`).join('');
+$('chips').innerHTML=M.map(m=>`<button aria-pressed="${m.id==mid}" data-m="${m.id}">${m.t}</button>`).join('')}
+function all(){ui();$('sub').textContent=`資料更新至 ${Y[Y.length-1]} 年 ${E+1} 月　·　${G[g]}${src}`;kpis();c1draw();c2draw();table()}
+$('yr').addEventListener('change',e=>{Yr=+e.target.value;S=Math.min(S,LI(Yr));all()});
+$('mo').addEventListener('change',e=>{S=+e.target.value;all()});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.g){g=b.dataset.g;all()}else if(b.dataset.m){mid=b.dataset.m;ui();c1draw()}else if(b.dataset.m2){mid2=b.dataset.m2;ui();c2draw()}});
+const X=s=>new DOMParser().parseFromString(s,'application/xml'),MO=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],ZN=new Set(['EB','APT','GHSP','OTP','OTP2']),
+MX={'FLT':'FLT','CFG':'CFG','PAX':'PAX','N/S(TL)':'NS','Tran.(TL)':'TRAN','BG (PC)':'BGPC','BG (KG)':'BGKG','EB (TWD)':'EB','APT FEE FNL (TWD)':'APT','GHSP FEE FNL (TWD)':'GHSP','OTP(ALL)':'OTP','OTP(P/G/C)':'OTP2','OTP(P/G/K/C)':'OTP2'};
+function init(){Y=Object.keys(D.OB.PAX).map(Number).sort((a,b)=>a-b);const mx=Y[Y.length-1];E=D.OB.PAX[mx].reduce((a,v,i)=>v!=null?i:a,0);Yr=mx;S=E}
+async function unzip(buf){const u=new Uint8Array(buf),dv=new DataView(buf),td=new TextDecoder();let e=u.length-22;while(e>=0&&dv.getUint32(e,true)!=0x06054b50)e--;if(e<0)throw Error('不是有效的 xlsx 檔案');
+const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const o={};
+for(let i=0;i<n;i++){const me=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),off=dv.getUint32(p+42,true),nm=td.decode(u.subarray(p+46,p+46+nl));p+=46+nl+xl+cl;
+if(!/^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|worksheets\/sheet\d+\.xml)$/.test(nm))continue;
+const lo=off+30+dv.getUint16(off+26,true)+dv.getUint16(off+28,true),d=u.subarray(lo,lo+cs);
+o[nm]=me==0?td.decode(d):await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text()}return o}
+async function readX(buf){const f=await unzip(buf),ss=f['xl/sharedStrings.xml']?[...X(f['xl/sharedStrings.xml']).getElementsByTagName('si')].map(si=>[...si.getElementsByTagName('t')].filter(t=>t.parentNode.localName!='rPh').map(t=>t.textContent).join('')):[],rel={},sh={};
+[...X(f['xl/_rels/workbook.xml.rels']).getElementsByTagName('Relationship')].forEach(r=>rel[r.getAttribute('Id')]=r.getAttribute('Target').replace(/^\/?(xl\/)?/,'xl/'));
+[...X(f['xl/workbook.xml']).getElementsByTagName('sheet')].forEach(s=>{const d=f[rel[s.getAttribute('r:id')]];if(d)sh[s.getAttribute('name')]=d});return{ss,sh}}
+function rowsOf(xml,ss){const R=[];for(const c of X(xml).getElementsByTagName('c')){const m=/^([A-Z]+)(\d+)$/.exec(c.getAttribute('r')),rn=+m[2];if(rn>61)continue;let ci=0;for(const ch of m[1])ci=ci*26+ch.charCodeAt(0)-64;ci--;if(ci>=26)continue;
+const t=c.getAttribute('t'),v=c.getElementsByTagName('v')[0];let val=null;if(t=='inlineStr')val=[...c.getElementsByTagName('t')].map(x=>x.textContent).join('');else if(v){const x=v.textContent;val=t=='s'?ss[+x]:t=='str'?x:(t=='b'||t=='e')?null:+x}
+(R[rn-1]=R[rn-1]||Array(26).fill(null))[ci]=val}return R.filter(Boolean)}
+function parseSheet(rows){const out={};let yr=null,hd=null;for(const r of rows){const a=r[0];
+if(typeof a=='number'&&Number.isInteger(a)&&a>=2000&&a<=2100){yr=a;hd=null;continue}
+if(a=='Month'){hd={};r.forEach((v,i)=>{if(MX[v])hd[MX[v]]=i});continue}
+if(yr&&hd&&typeof a=='string'&&MO.includes(a.toUpperCase())){const mi=MO.indexOf(a.toUpperCase());for(const k in hd){let v=r[hd[k]];if(typeof v!='number'||(ZN.has(k)&&v==0))v=null;if(v!=null&&(k=='OTP'||k=='OTP2'))v=Math.round(v*1e4)/1e4;((out[k]=out[k]||{})[yr]=out[k][yr]||Array(12).fill(null))[mi]=v}}}return out}
+$('imp').onclick=()=>$('fi').click();
+$('fi').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const{ss,sh}=await readX(await f.arrayBuffer()),n={};
+for(const[k,nm]of[['OB','TPE RMQ-ALL'],['IB','ALL-TPERMQ']]){if(!sh[nm])throw Error('找不到工作表「'+nm+'」');n[k]=parseSheet(rowsOf(sh[nm],ss))}
+if(!n.OB.PAX||!n.IB.PAX)throw Error('讀不到旅客數（PAX）欄位，請確認欄位標題沒有被改動');D=n;init();src='　·　已匯入 '+f.name;all()}catch(x){alert('匯入失敗：'+x.message)}e.target.value=''};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>setTimeout(all,50));
+init();all();
+</script></body></html>
